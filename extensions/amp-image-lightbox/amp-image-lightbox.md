@@ -31,11 +31,11 @@ limitations under the License.
   </tr>
   <tr>
     <td class="col-fourty"><strong><a href="https://www.ampproject.org/docs/guides/responsive/control_layout.html">Supported Layouts</a></strong></td>
-    <td>NODISPLAY</td>
+    <td>nodisplay</td>
   </tr>
   <tr>
     <td width="40%"><strong>Examples</strong></td>
-    <td><a href="https://ampbyexample.com/components/amp-image-lightbox">amp-image-lightbox.html</a><br /><a href="https://github.com/ampproject/amphtml/blob/master/examples/everything.amp.html">everything.amp.html</a></td>
+    <td><a href="https://ampbyexample.com/components/amp-image-lightbox/">Annotated code example for amp-image-lightbox</a></td>
   </tr>
 </table>
 
@@ -51,7 +51,7 @@ The typical scenario looks like this:
 <amp-image-lightbox id="lightbox1" layout="nodisplay"></amp-image-lightbox>
 ```
 
-The `amp-image-lightbox` is activated using `on` action on the `amp-img` element
+The `amp-image-lightbox` is activated using [`on`](https://github.com/ampproject/amphtml/blob/master/spec/amp-html-format.md#on) action on the `amp-img` element
 by referencing the lightbox element's ID. When activated, it places the image in
 the center of the full-viewport lightbox. Notice that any number of images in
 the article can use the same `amp-image-lightbox`. The `amp-image-lightbox`
@@ -74,6 +74,33 @@ properties that can be styled are `background` and `color`.
 
 The `amp-image-lightbox-caption` class is also available to style the caption
 section.
+
+## Actions
+The `amp-image-lightbox` exposes the following actions you can use [AMP on-syntax to trigger](../../../src/spec/amp-actions-and-events.md):
+
+<table>
+  <tr>
+    <th>Action</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>(default)</td>
+    <td>Opens the image lightbox with the source image being the one that triggered the action.</td>
+  </tr>
+</table>
+
+### Examples
+
+```html
+<amp-img on="tap:lightbox1" role="button" tabindex="0" src="image1" width=200 height=100></amp-img>
+<amp-image-lightbox id="lightbox1" layout="nodisplay"></amp-image-lightbox>
+```
+
+## Attributes
+
+**layout**
+
+Must be set to `nodisplay`.
 
 ## Validation
 

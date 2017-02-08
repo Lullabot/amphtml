@@ -36,6 +36,24 @@ describe('alp-handler', () => {
       Image: function() {
         image = this;
       },
+      postMessage: sandbox.stub(),
+      _id: 'base-win',
+    };
+    win.parent = {
+      postMessage: sandbox.stub(),
+      _id: 'p0',
+    };
+    win.parent.parent = {
+      postMessage: sandbox.stub(),
+      _id: 'p1',
+    };
+    win.parent.parent.parent = {
+      postMessage: sandbox.stub(),
+      _id: 'p2',
+    };
+    win.parent.parent.parent.parent = {
+      postMessage: sandbox.stub(),
+      _id: 'p3',
     };
     open = sandbox.stub(win, 'open', () => {
       return {};
@@ -48,6 +66,7 @@ describe('alp-handler', () => {
     };
     win.document = doc;
     anchor = {
+      nodeType: 1,
       tagName: 'A',
       href: 'https://test.com?adurl=' +
         encodeURIComponent(
@@ -59,6 +78,7 @@ describe('alp-handler', () => {
       },
     };
     event = {
+      trusted: true,
       buttons: 0,
       target: anchor,
       preventDefault: sandbox.spy(),
@@ -72,7 +92,7 @@ describe('alp-handler', () => {
 
   function simpleSuccess() {
     handleClick(event);
-    expect(open.callCount).to.equal(1);
+    expect(open).to.be.calledOnce;
     expect(open.lastCall.args).to.jsonEqual([
       'https://cdn.ampproject.org/c/www.example.com/amp.html#click=' +
           'https%3A%2F%2Ftest.com%3Famp%3D1%26adurl%3Dhttps%253A%252F%252F' +
@@ -80,13 +100,26 @@ describe('alp-handler', () => {
       '_top',
       undefined,
     ]);
-    expect(event.preventDefault.callCount).to.equal(1);
+    expect(event.preventDefault).to.be.calledOnce;
+  }
+
+  function a2aSuccess(ampParent) {
+    handleClick(event);
+    expect(event.preventDefault).to.be.calledOnce;
+    expect(ampParent.postMessage).to.be.calledOnce;
+    expect(ampParent.postMessage.lastCall.args[0]).to.equal(
+        'a2a;{"url":"https://cdn.ampproject.org/c/www.example.com/amp.html' +
+        '#click=https%3A%2F%2Ftest.com%3Famp%3D1%26adurl%3Dhttps%253A%252F%' +
+        '252Fcdn.ampproject.org%252Fc%252Fwww.example.com%252Famp.html"}');
+    expect(ampParent.postMessage.lastCall.args[1]).to.equal(
+        'https://cdn.ampproject.org');
+    expect(open).to.have.not.been.called;
   }
 
   function noNavigation() {
     handleClick(event);
-    expect(open.callCount).to.equal(0);
-    expect(event.preventDefault.callCount).to.equal(0);
+    expect(open).to.have.not.been.called;
+    expect(event.preventDefault).to.have.not.been.called;
   }
 
   it('should navigate to correct destination', () => {
@@ -96,6 +129,93 @@ describe('alp-handler', () => {
   it('should navigate to correct destination (left mouse button)', () => {
     event.button = 1;
     simpleSuccess();
+  });
+
+  it('should perform a2a navigation if appropriate', () => {
+    win.location.ancestorOrigins = [
+      'https://cdn.ampproject.org',
+      'https://www.google.com',
+    ];
+    a2aSuccess(win.parent);
+  });
+
+  it('should perform a2a navigation if appropriate (.de)', () => {
+    win.location.ancestorOrigins = [
+      'https://cdn.ampproject.org',
+      'https://www.google.de',
+    ];
+    a2aSuccess(win.parent);
+  });
+
+  it('should perform a2a navigation if appropriate nested: 1', () => {
+    win.location.ancestorOrigins = [
+      'https://3p.ampproject.net',
+      'https://cdn.ampproject.org',
+      'https://www.google.de',
+    ];
+    a2aSuccess(win.parent.parent);
+  });
+
+  it('should perform a2a navigation if appropriate nested: 2', () => {
+    win.location.ancestorOrigins = [
+      'https://some-domain.com',
+      'https://3p.ampproject.net',
+      'https://cdn.ampproject.org',
+      'https://www.google.de',
+    ];
+    a2aSuccess(win.parent.parent.parent);
+  });
+
+  it('should perform a2a navigation if appropriate nested: 3', () => {
+    win.location.ancestorOrigins = [
+      'https://some-domain.com',
+      'https://some-domain.com',
+      'https://3p.ampproject.net',
+      'https://cdn.ampproject.org',
+      'https://www.google.de',
+    ];
+    a2aSuccess(win.parent.parent.parent.parent);
+  });
+
+  it('should not perform a2a for other origins', () => {
+    win.location.ancestorOrigins = [
+      'https://cdn.ampproject.org',
+      'https://www.other.com',
+    ];
+    simpleSuccess();
+  });
+
+  it('should not perform a2a for other origins (2)', () => {
+    win.location.ancestorOrigins = [
+      'https://cdn.ampproject2.org',
+      'https://www.google.com',
+    ];
+    simpleSuccess();
+  });
+
+  it('should perform special navigation if specially asked for', () => {
+    const navigateSpy = sandbox.spy();
+    const opt_navigate = val => {
+      navigateSpy();
+      expect(val).to.equal(
+          'https://cdn.ampproject.org/c/www.example.com/amp.html#click=' +
+          'https%3A%2F%2Ftest.com%3Famp%3D1%26adurl%3Dhttps%253A%252F%252F' +
+          'cdn.ampproject.org%252Fc%252Fwww.example.com%252Famp.html');
+    };
+    handleClick(event, opt_navigate);
+    expect(event.preventDefault).to.be.calledOnce;
+    expect(open).to.not.be.called;
+    expect(navigateSpy).to.be.calledOnce;
+  });
+
+  it('should navigate if trusted is not set.', () => {
+    delete event.trusted;
+    simpleSuccess();
+  });
+
+  it('should fail with trusted being false', () => {
+    event.isTrusted = false;
+    noNavigation();
   });
 
   it('should support custom arg name', () => {
@@ -137,7 +257,9 @@ describe('alp-handler', () => {
   it('should find the closest a tag', () => {
     const a = anchor;
     event.target = {
+      nodeType: 1,
       parentElement: {
+        nodeType: 1,
         parentElement: a,
       },
     };
@@ -145,7 +267,9 @@ describe('alp-handler', () => {
   });
 
   it('should require an a tag', () => {
-    event.target = {};
+    event.target = {
+      nodeType: 1,
+    };
     noNavigation();
   });
 
@@ -175,16 +299,15 @@ describe('alp-handler', () => {
     warmupStatic(win);
     expect(image).to.be.defined;
     expect(image.src).to.equal('https://cdn.ampproject.org/preconnect.gif');
-    expect(win.document.head.appendChild.callCount).to.equal(1);
+    expect(win.document.head.appendChild).to.be.calledOnce;
     const link = win.document.head.appendChild.lastCall.args[0];
     expect(link.rel).to.equal('preload');
-    expect(link.href).to.equal(
-        'https://cdn.ampproject.org/rtv/01$internalRuntimeVersion$/v0.js');
+    expect(link.href).to.equal('https://cdn.ampproject.org/v0.js');
   });
 
   it('should warmup dynamically', () => {
     warmupDynamic(event);
-    expect(win.document.head.appendChild.callCount).to.equal(1);
+    expect(win.document.head.appendChild).to.be.calledOnce;
     const link = win.document.head.appendChild.lastCall.args[0];
     expect(link.rel).to.equal('preload');
     expect(link.href).to.equal(
@@ -192,14 +315,16 @@ describe('alp-handler', () => {
   });
 
   it('should ignore irrelevant events for warmup (bad target)', () => {
-    event.target = {};
+    event.target = {
+      nodeType: 1,
+    };
     warmupDynamic(event);
-    expect(win.document.head.appendChild.callCount).to.equal(0);
+    expect(win.document.head.appendChild).to.have.not.been.called;
   });
 
   it('should ignore irrelevant events for warmup (bad href)', () => {
     anchor.href = 'https://www.example.com';
     warmupDynamic(event);
-    expect(win.document.head.appendChild.callCount).to.equal(0);
+    expect(win.document.head.appendChild).to.have.not.been.called;
   });
 });

@@ -16,7 +16,7 @@
 
 /**
  * Get social share configurations by supported type.
- * @param  {!string} type
+ * @param  {string} type
  * @return {!Object}
  */
 export function getSocialConfig(type) {
@@ -24,7 +24,7 @@ export function getSocialConfig(type) {
 }
 
 /**
- * @type {Object<string, Object>}
+ * @type {!Object<string, !Object>}
  */
 const BUILTINS = {
   twitter: {
@@ -44,6 +44,7 @@ const BUILTINS = {
     shareEndpoint: 'https://www.pinterest.com/pin/create/button/',
     defaultParams: {
       url: 'CANONICAL_URL',
+      description: 'TITLE',
     },
   },
   linkedin: {
@@ -64,6 +65,26 @@ const BUILTINS = {
     defaultParams: {
       subject: 'TITLE',
       body: 'CANONICAL_URL',
+    },
+  },
+  tumblr: {
+    shareEndpoint: 'https://www.tumblr.com/share/link',
+    defaultParams: {
+      name: 'TITLE',
+      url: 'CANONICAL_URL',
+    },
+  },
+  whatsapp: {
+    shareEndpoint: 'whatsapp://send',
+    defaultParams: {
+      text: 'TITLE - CANONICAL_URL',
+    },
+  },
+  system: {
+    shareEndpoint: 'navigator-share:',
+    defaultParams: {
+      text: 'TITLE',
+      url: 'CANONICAL_URL',
     },
   },
 };

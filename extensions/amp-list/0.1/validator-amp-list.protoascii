@@ -15,9 +15,13 @@
 #
 
 tags: {  # amp-list
-  tag_name: "script"
+  html_format: AMP
+  html_format: AMP4ADS
+  tag_name: "SCRIPT"
   spec_name: "amp-list extension .js script"
-  mandatory_parent: "head"
+  mandatory_parent: "HEAD"
+  unique_warning: true
+  extension_unused_unless_tag_present: "amp-list"
   attrs: {
     name: "async"
     mandatory: true
@@ -29,6 +33,7 @@ tags: {  # amp-list
     value: "amp-list"
     dispatch_key: true
   }
+  attrs: { name: "nonce" }
   attrs: {
     name: "src"
     mandatory: true
@@ -36,7 +41,7 @@ tags: {  # amp-list
   }
   attrs: {
     name: "type"
-    value: "text/javascript"
+    value_casei: "text/javascript"
   }
   cdata: {
     blacklisted_cdata_regex: {
@@ -47,9 +52,9 @@ tags: {  # amp-list
   spec_url: "https://www.ampproject.org/docs/reference/extended/amp-list.html"
 }
 tags: {  # <amp-list>
-  tag_name: "amp-list"
-  disallowed_ancestor: "head"
-  disallowed_ancestor: "amp-sidebar"
+  html_format: AMP
+  html_format: AMP4ADS
+  tag_name: "AMP-LIST"
   also_requires_tag: "amp-list extension .js script"
   attrs: { name: "credentials" }
   attrs: {
@@ -59,7 +64,9 @@ tags: {  # <amp-list>
       allowed_protocol: "https"
       allow_relative: true  # Will be set to false at a future date.
     }
+    blacklisted_value_regex: "__amp_source_origin"
   }
+  attrs: { name: "items" }
   # TODO(gregable): Implement validation that requires the template attr value
   # to reference the id of an existing template element.
   attrs: { name: "template" }

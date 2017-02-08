@@ -16,6 +16,9 @@
 
 import * as dom from '../../src/dom';
 import * as sinon from 'sinon';
+import {loadPromise} from '../../src/event-helper';
+import {toArray} from '../../src/types';
+
 
 
 describe('DOM', () => {
@@ -70,9 +73,31 @@ describe('DOM', () => {
     element.appendChild(child);
 
     expect(dom.closest(child, () => true)).to.equal(child);
+    expect(dom.closestNode(child, () => true)).to.equal(child);
     expect(dom.closestByTag(child, 'div')).to.equal(child);
     expect(dom.closestByTag(child, 'DIV')).to.equal(child);
   });
+
+  it('closest should stop search at opt_stopAt', () => {
+    const cbSpy = sandbox.spy();
+    const cb = el => {
+      cbSpy();
+      return el.tagName == 'DIV';
+    };
+    const element = document.createElement('div');
+
+    const child = document.createElement('p');
+    const grandchild = document.createElement('img');
+    child.appendChild(grandchild);
+    element.appendChild(child);
+    expect(dom.closest(grandchild, cb)).to.equal(element);
+    expect(cbSpy).to.be.calledThrice;
+
+    expect(dom.closest(grandchild, cb, child)).to.be.null;
+    expect(cbSpy).to.have.callCount(4);
+
+  });
+
 
   it('closest should find first match', () => {
     const parent = document.createElement('parent');
@@ -84,16 +109,62 @@ describe('DOM', () => {
     element.appendChild(child);
 
     expect(dom.closest(child, e => e.tagName == 'CHILD')).to.equal(child);
+    expect(dom.closestNode(child, e => e.tagName == 'CHILD')).to.equal(child);
     expect(dom.closestByTag(child, 'child')).to.equal(child);
 
     expect(dom.closest(child, e => e.tagName == 'ELEMENT')).to.equal(element);
+    expect(dom.closestNode(child, e => e.tagName == 'ELEMENT'))
+        .to.equal(element);
     expect(dom.closestByTag(child, 'element')).to.equal(element);
 
     expect(dom.closest(child, e => e.tagName == 'PARENT')).to.equal(parent);
+    expect(dom.closestNode(child, e => e.tagName == 'PARENT')).to.equal(parent);
     expect(dom.closestByTag(child, 'parent')).to.equal(parent);
   });
 
-  it('closest should find first match', () => {
+  it('closestNode should find nodes as well as elements', () => {
+    const fragment = document.createDocumentFragment();
+
+    const element = document.createElement('div');
+    fragment.appendChild(element);
+
+    const text = document.createTextNode('abc');
+    element.appendChild(text);
+
+    expect(dom.closestNode(text, () => true)).to.equal(text);
+    expect(dom.closestNode(text, n => n.nodeType == 1)).to.equal(element);
+    expect(dom.closestNode(text, n => n.nodeType == 11)).to.equal(fragment);
+  });
+
+  it('closestBySelector should find first match', () => {
+    const parent = document.createElement('parent');
+    parent.className = 'parent';
+    parent.id = 'parent';
+
+    const element = document.createElement('element');
+    element.id = 'element';
+    element.className = 'element';
+    parent.appendChild(element);
+
+    const child = document.createElement('child');
+    child.id = 'child';
+    child.className = 'child';
+    element.appendChild(child);
+
+    expect(dom.closestBySelector(child, 'child')).to.equal(child);
+    expect(dom.closestBySelector(child, '.child')).to.equal(child);
+    expect(dom.closestBySelector(child, '#child')).to.equal(child);
+
+    expect(dom.closestBySelector(child, 'element')).to.equal(element);
+    expect(dom.closestBySelector(child, '.element')).to.equal(element);
+    expect(dom.closestBySelector(child, '#element')).to.equal(element);
+
+    expect(dom.closestBySelector(child, 'parent')).to.equal(parent);
+    expect(dom.closestBySelector(child, '.parent')).to.equal(parent);
+    expect(dom.closestBySelector(child, '#parent')).to.equal(parent);
+  });
+
+  it('elementByTag should find first match', () => {
     const parent = document.createElement('parent');
 
     const element1 = document.createElement('element');
@@ -186,6 +257,33 @@ describe('DOM', () => {
     testChildElementByTag();
   });
 
+  function testChildElementsByTag() {
+    const parent = document.createElement('parent');
+
+    const element1 = document.createElement('element1');
+    parent.appendChild(element1);
+
+    const element2 = document.createElement('element23');
+    parent.appendChild(element2);
+
+    const element3 = document.createElement('element23');
+    parent.appendChild(element3);
+
+    expect(toArray(dom.childElementsByTag(parent, 'element1')))
+        .to.deep.equal([element1]);
+    expect(toArray(dom.childElementsByTag(parent, 'element23')))
+        .to.deep.equal([element2, element3]);
+    expect(toArray(dom.childElementsByTag(parent, 'element3')))
+        .to.deep.equal([]);
+  }
+
+  it('childElementsByTag should find first match', testChildElementsByTag);
+
+  it('childElementsByTag should find first match (polyfill)', () => {
+    dom.setScopeSelectorSupportedForTesting(false);
+    testChildElementsByTag();
+  });
+
   function testChildElementByAttr() {
     const parent = document.createElement('parent');
 
@@ -272,58 +370,80 @@ describe('DOM', () => {
     expect(dom.lastChildElementByAttr(parent, 'on-child')).to.be.null;
   });
 
-  describe('contains', () => {
-    let connectedElement;
-    let connectedChild;
-    let disconnectedElement;
-    let disconnectedChild;
+  it('ancestorElements should find all matches', () => {
+    const parent = document.createElement('parent');
+    const element1 = document.createElement('element1');
+    parent.appendChild(element1);
+    const element2 = document.createElement('element2');
+    element1.appendChild(element2);
+    expect(dom.ancestorElements(element2, () => true).length).to.equal(2);
+    expect(dom.ancestorElements(element2, e => e.tagName == 'ELEMENT1').length)
+        .to.equal(1);
+    expect(dom.ancestorElements(element1, e => e.tagName == 'PARENT').length)
+        .to.equal(1);
+    expect(dom.ancestorElements(parent, e => e.tagName == 'ELEMENT3').length)
+        .to.be.equal(0);
+  });
 
-    beforeEach(() => {
-      connectedElement = document.createElement('div');
-      connectedChild = document.createElement('div');
-      disconnectedElement = document.createElement('div');
-      disconnectedChild = document.createElement('div');
+  it('ancestorElementsByTag should find all matches', () => {
+    const parent = document.createElement('parent');
+    const element1 = document.createElement('element1');
+    parent.appendChild(element1);
+    const element2 = document.createElement('element2');
+    element1.appendChild(element2);
+    expect(dom.ancestorElementsByTag(element2, 'ELEMENT1').length)
+        .to.equal(1);
+    expect(dom.ancestorElementsByTag(element1, 'PARENT').length)
+        .to.equal(1);
+    expect(dom.ancestorElementsByTag(element2, 'ELEMENT3').length)
+        .to.be.equal(0);
+  });
 
-      connectedElement.appendChild(connectedChild);
-      disconnectedElement.appendChild(disconnectedChild);
-      document.body.appendChild(connectedElement);
-    });
+  function testScopedQuerySelector() {
+    const grandparent = document.createElement('div');
 
-    afterEach(() => {
-      dom.removeElement(connectedElement);
-    });
+    const parent = document.createElement('div');
+    grandparent.appendChild(parent);
 
-    it('should use document.contains or fallback as available', () => {
-      expect(dom.documentContains(document, connectedElement)).to.be.true;
-      expect(dom.documentContains(document, connectedChild)).to.be.true;
-      expect(dom.documentContains(document, disconnectedElement)).to.be.false;
-      expect(dom.documentContains(document, disconnectedChild)).to.be.false;
-    });
+    const element1 = document.createElement('div');
+    parent.appendChild(element1);
 
-    it('should polyfill document.contains', () => {
-      expect(dom.documentContainsPolyfillInternal_(
-          document, connectedElement)).to.be.true;
-      expect(dom.documentContainsPolyfillInternal_(
-          document, connectedChild)).to.be.true;
-      expect(dom.documentContainsPolyfillInternal_(
-          document, disconnectedElement)).to.be.false;
-      expect(dom.documentContainsPolyfillInternal_(
-          document, disconnectedChild)).to.be.false;
-    });
+    expect(dom.scopedQuerySelector(parent, 'div')).to.equal(element1);
+    expect(dom.scopedQuerySelector(grandparent, 'div div')).to.equal(element1);
+  }
 
-    it('should be inclusionary for documentElement', () => {
-      expect(dom.documentContains(
-          document, document.documentElement)).to.be.true;
-      expect(dom.documentContainsPolyfillInternal_(
-          document, document.documentElement)).to.be.true;
-    });
+  it('scopedQuerySelector should find first match', testScopedQuerySelector);
 
-    it('should be inclusionary for document itself', () => {
-      expect(dom.documentContains(
-          document, document)).to.be.true;
-      expect(dom.documentContainsPolyfillInternal_(
-          document, document)).to.be.true;
-    });
+  it('scopedQuerySelector should find first match (polyfill)', () => {
+    dom.setScopeSelectorSupportedForTesting(false);
+    testScopedQuerySelector();
+  });
+
+  function testScopedQuerySelectorAll() {
+    const grandparent = document.createElement('div');
+
+    const parent = document.createElement('div');
+    grandparent.appendChild(parent);
+
+    const element1 = document.createElement('div');
+    parent.appendChild(element1);
+
+    const element2 = document.createElement('div');
+    parent.appendChild(element2);
+
+
+    expect(toArray(dom.scopedQuerySelectorAll(parent, 'div')))
+      .to.deep.equal([element1, element2]);
+    expect(toArray(dom.scopedQuerySelectorAll(grandparent, 'div div')))
+      .to.deep.equal([element1, element2]);
+  }
+
+  it('scopedQuerySelectorAll should find all matches',
+      testScopedQuerySelectorAll);
+
+  it('scopedQuerySelectorAll should find all matches (polyfill)', () => {
+    dom.setScopeSelectorSupportedForTesting(false);
+    testScopedQuerySelectorAll();
   });
 
   describe('waitFor', () => {
@@ -343,13 +463,13 @@ describe('DOM', () => {
       parent.appendChild(child);
       const spy = sandbox.spy();
       dom.waitForChild(parent, contains, spy);
-      expect(spy.callCount).to.equal(1);
+      expect(spy).to.be.calledOnce;
     });
 
     it('should wait until child is available', () => {
       const spy = sandbox.spy();
       dom.waitForChild(parent, contains, spy);
-      expect(spy.callCount).to.equal(0);
+      expect(spy).to.have.not.been.called;
 
       return new Promise(resolve => {
         const interval = setInterval(() => {
@@ -360,7 +480,7 @@ describe('DOM', () => {
         }, 10);
         parent.appendChild(child);
       }).then(() => {
-        expect(spy.callCount).to.equal(1);
+        expect(spy).to.be.calledOnce;
       });
     });
 
@@ -385,8 +505,8 @@ describe('DOM', () => {
       const spy = sandbox.spy();
 
       dom.waitForChild(parent, checkFunc, spy);
-      expect(spy.callCount).to.equal(0);
-      expect(mutationObserver.observe.callCount).to.equal(1);
+      expect(spy).to.have.not.been.called;
+      expect(mutationObserver.observe).to.be.calledOnce;
       expect(mutationObserver.observe.firstCall.args[0]).to.equal(parent);
       expect(mutationObserver.observe.firstCall.args[1])
           .to.deep.equal({childList: true});
@@ -394,14 +514,14 @@ describe('DOM', () => {
 
       // False callback.
       mutationCallback();
-      expect(spy.callCount).to.equal(0);
-      expect(mutationObserver.disconnect.callCount).to.equal(0);
+      expect(spy).to.have.not.been.called;
+      expect(mutationObserver.disconnect).to.have.not.been.called;
 
       // True callback.
       checkFuncValue = true;
       mutationCallback();
-      expect(spy.callCount).to.equal(1);
-      expect(mutationObserver.disconnect.callCount).to.equal(1);
+      expect(spy).to.be.calledOnce;
+      expect(mutationObserver.disconnect).to.be.calledOnce;
     });
 
     it('should fallback to polling without MutationObserver', () => {
@@ -423,19 +543,19 @@ describe('DOM', () => {
       const spy = sandbox.spy();
 
       dom.waitForChild(parent, checkFunc, spy);
-      expect(spy.callCount).to.equal(0);
+      expect(spy).to.have.not.been.called;
       expect(intervalCallback).to.exist;
 
       // False callback.
       intervalCallback();
-      expect(spy.callCount).to.equal(0);
-      expect(win.clearInterval.callCount).to.equal(0);
+      expect(spy).to.have.not.been.called;
+      expect(win.clearInterval).to.have.not.been.called;
 
       // True callback.
       checkFuncValue = true;
       intervalCallback();
-      expect(spy.callCount).to.equal(1);
-      expect(win.clearInterval.callCount).to.equal(1);
+      expect(spy).to.be.calledOnce;
+      expect(win.clearInterval).to.be.calledOnce;
     });
 
     it('should wait for body', () => {
@@ -455,6 +575,14 @@ describe('DOM', () => {
       expect(params.hello).to.be.equal('2');
       expect(params.fromTheOtherSide).to.be.equal('3');
       expect(params.attr1).to.be.undefined;
+    });
+
+    it('should return key-value for custom data attributes', () => {
+      const element = document.createElement('element');
+      element.setAttribute('data-vars-event-name', 'click');
+      const params = dom.getDataParamsFromAttributes(element, null,
+        /^vars(.+)/);
+      expect(params.eventName).to.be.equal('click');
     });
   });
 
@@ -591,6 +719,121 @@ describe('DOM', () => {
       const res = dom.openWindowDialog(windowApi, 'https://example.com/',
           '_top', 'width=1');
       expect(res).to.be.null;
+    });
+  });
+
+  describe('isJsonScriptTag', () => {
+    it('should return true for <script type="application/json">', () => {
+      const element = document.createElement('script');
+      element.setAttribute('type', 'application/json');
+      expect(dom.isJsonScriptTag(element)).to.be.true;
+    });
+
+    it('should return true for <script type="aPPLication/jSon">', () => {
+      const element = document.createElement('script');
+      element.setAttribute('type', 'aPPLication/jSon');
+      expect(dom.isJsonScriptTag(element)).to.be.true;
+    });
+
+    it('should return false for <script type="text/javascript">', () => {
+      const element = document.createElement('script');
+      element.setAttribute('type', 'text/javascript');
+      expect(dom.isJsonScriptTag(element)).to.be.false;
+    });
+
+    it('should return false for <div type="application/json">', () => {
+      const element = document.createElement('div');
+      element.setAttribute('type', 'application/json');
+      expect(dom.isJsonScriptTag(element)).to.be.false;
+    });
+  });
+
+  describe('escapeCssSelectorIdent', () => {
+
+    it('should escape natively', () => {
+      expect(dom.escapeCssSelectorIdent(window, 'a b')).to.equal('a\\ b');
+    });
+
+    it('should polyfill escape', () => {
+      expect(dom.escapeCssSelectorIdent({}, 'a b')).to.equal('a\\ b');
+    });
+  });
+
+  describe('escapeHtml', () => {
+    it('should tolerate empty string', () => {
+      expect(dom.escapeHtml('')).to.equal('');
+    });
+
+    it('should ignore non-escapes', () => {
+      expect(dom.escapeHtml('abc')).to.equal('abc');
+    });
+
+    it('should subsctitute escapes', () => {
+      expect(dom.escapeHtml('a<b>&c"d\'e\`f')).to.equal(
+          'a&lt;b&gt;&amp;c&quot;d&#x27;e&#x60;f');
+    });
+  });
+
+  describe('tryFocus', () => {
+    it('should call focus on the element', () => {
+      const element = {
+        focus() {},
+      };
+      const focusSpy = sandbox.spy(element, 'focus');
+      dom.tryFocus(element);
+      expect(focusSpy).to.have.been.called;
+    });
+
+    it('should not throw exception if element focus throws exception', () => {
+      const element = {
+        focus() {
+          throw new Error('Cannot focus');
+        },
+      };
+      const focusSpy = sandbox.spy(element, 'focus');
+      dom.tryFocus(element);
+      expect(focusSpy).to.have.been.called;
+      expect(focusSpy).to.not.throw;
+    });
+  });
+
+  describe('matches', () => {
+    let div, img1, iframe, ampEl;
+    beforeEach(() => {
+      ampEl = document.createElement('amp-ad');
+      ampEl.className = 'i-amphtml-element';
+      ampEl.id = 'ampEl';
+      iframe = document.createElement('iframe');
+      div = document.createElement('div');
+      div.id = 'div';
+      img1 = document.createElement('amp-img');
+      img1.id = 'img1';
+      div.appendChild(img1);
+      iframe.srcdoc = div.outerHTML;
+      document.body.appendChild(ampEl);
+
+      const loaded = loadPromise(iframe);
+      ampEl.appendChild(iframe);
+      return loaded;
+
+    });
+
+    afterEach(() => {
+      document.body.removeChild(ampEl);
+    });
+
+    it('finds element by id', () => {
+      expect(dom.matches(ampEl, '#ampEl')).to.be.true;
+      [div, img1, iframe].map(el => {
+        expect(dom.matches(el, '#ampEl')).to.be.false;
+      });
+    });
+
+    it('finds element by tagname', () => {
+      expect(dom.matches(div, 'div')).to.be.true;
+      [ampEl, img1, iframe].map(el => {
+        expect(dom.matches(el, 'div')).to.be.false;
+      });
     });
   });
 });

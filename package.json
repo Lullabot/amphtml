@@ -14,32 +14,38 @@
     "url": "https://github.com/ampproject/amphtml.git"
   },
   "scripts": {
-    "test": "gulp test",
+    "test": "gulp test && ava",
+    "ava": "ava",
     "lint": "gulp lint",
     "build": "gulp build",
     "dist": "gulp dist",
-    "heroku-postbuild": "gulp clean && gulp build --fortesting && gulp dist --fortesting"
+    "heroku-postbuild": "npm run test-env-var && gulp clean && gulp build --fortesting && gulp dist --fortesting && npm run prepend-amp && npm run prepend-v0",
+    "test-env-var": "if [ -z \"${AMP_TESTING_HOST}\" ]; then echo \"ERROR: Please set the 'AMP_TESTING_HOST' environment variable. If you are in heroku this can be set by executing 'heroku config:set AMP_TESTING_HOST=my-heroku-subdomain.herokuapp.com' on the command line.\"; exit 1; fi",
+    "prepend-amp": "gulp prepend-global --prod node_modules/AMP_CONFIG.json --local --target dist/amp.js && gulp prepend-global --prod node_modules/AMP_CONFIG.json --local --target dist.3p/current/integration.js",
+    "prepend-v0": "gulp prepend-global --prod node_modules/AMP_CONFIG.json --local --target dist/v0.js && gulp prepend-global --prod node_modules/AMP_CONFIG.json --local --target dist.3p/current-min/f.js"
   },
   "dependencies": {
-    "document-register-element": "0.5.4",
-    "promise-pjs": "1.1.2"
+    "document-register-element": "1.1.1",
+    "promise-pjs": "1.1.2",
+    "web-animations-js": "2.2.2"
   },
   "devDependencies": {
-    "autoprefixer": "6.1.1",
+    "autoprefixer": "6.7.0",
+    "ava": "0.15.2",
     "babel-core": "5.8.35",
-    "babel-eslint": "4.1.8",
+    "babel-eslint": "6.1.2",
     "babelify": "6.4.0",
+    "baconipsum": "0.1.2",
     "bluebird": "3.0.5",
     "body-parser": "1.14.2",
-    "brotli-size": "0.0.1",
-    "browserify": "13.0.0",
+    "browserify": "14.0.0",
     "chai": "3.5.0",
     "chai-as-promised": "5.2.0",
     "cssnano": "3.3.2",
     "del": "2.2.0",
-    "eslint": "1.10.3",
+    "eslint": "3.14.1",
     "eslint-plugin-google-camelcase": "0.0.2",
-    "express": "4.13.4",
+    "express": "4.14.0",
     "formidable": "1.0.17",
     "fs-extra": "0.27.0",
     "gulp": "3.9.1",
@@ -50,12 +56,11 @@
     "gulp-git": "1.7.2",
     "gulp-help": "1.6.1",
     "gulp-if": "2.0.0",
-    "gulp-image-diff": "0.3.0",
     "gulp-load-plugins": "1.2.0",
     "gulp-rename": "1.2.2",
     "gulp-replace": "0.5.4",
     "gulp-sourcemaps": "1.5.2",
-    "gulp-uglify": "1.5.1",
+    "gulp-uglify": "2.0.1",
     "gulp-util": "3.0.7",
     "gulp-watch": "4.3.5",
     "gulp-webserver": "0.9.1",
@@ -64,7 +69,7 @@
     "jison": "0.4.15",
     "jsdom": "9.2.1",
     "karma": "0.13.21",
-    "karma-browserify": "5.0.2",
+    "karma-browserify": "5.1.1",
     "karma-chai": "0.1.0",
     "karma-chai-as-promised": "0.1.2",
     "karma-chrome-launcher": "0.2.2",
@@ -82,10 +87,10 @@
     "mocha": "2.5.3",
     "morgan": "1.7.0",
     "path": "0.12.7",
-    "postcss": "5.0.14",
-    "postcss-import": "8.0.2",
+    "postcss": "5.2.10",
+    "postcss-import": "9.1.0",
     "pretty-bytes": "2.0.1",
-    "request": "2.69.0",
+    "request": "2.73.0",
     "rimraf": "2.5.1",
     "sinon": "1.17.3",
     "sinon-chai": "2.8.0",
@@ -94,6 +99,14 @@
     "touch": "1.0.0",
     "vinyl-buffer": "1.0.0",
     "vinyl-source-stream": "1.1.0",
-    "watchify": "3.7.0"
+    "watchify": "3.9.0"
+  },
+  "ava": {
+    "files": [
+      "build-system/tasks/**/{test,test-*}.js"
+    ],
+    "concurrency": 5,
+    "tap": true,
+    "failFast": true
   }
 }

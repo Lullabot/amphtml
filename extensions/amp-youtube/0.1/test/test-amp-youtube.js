@@ -19,8 +19,10 @@ import {
   doNotLoadExternalResourcesInTest,
 } from '../../../../testing/iframe';
 import '../amp-youtube';
+import {listenOncePromise} from '../../../../src/event-helper';
 import {adopt} from '../../../../src/runtime';
-import {timer} from '../../../../src/timer';
+import {timerFor} from '../../../../src/timer';
+import {VideoEvents} from '../../../../src/video-interface';
 import * as sinon from 'sinon';
 
 adopt(window);
@@ -28,6 +30,7 @@ adopt(window);
 describe('amp-youtube', function() {
   this.timeout(5000);
   let sandbox;
+  const timer = timerFor(window);
 
   beforeEach(() => {
     sandbox = sinon.sandbox.create();
@@ -73,9 +76,7 @@ describe('amp-youtube', function() {
       expect(iframe).to.not.be.null;
       expect(iframe.tagName).to.equal('IFRAME');
       expect(iframe.src).to.equal(
-          'https://www.youtube.com/embed/mGENRKrdoGY?enablejsapi=1');
-      expect(iframe.getAttribute('width')).to.equal('111');
-      expect(iframe.getAttribute('height')).to.equal('222');
+          'https://www.youtube.com/embed/mGENRKrdoGY?enablejsapi=1&playsinline=1');
     });
   });
 
@@ -83,7 +84,7 @@ describe('amp-youtube', function() {
     return getYt({'data-videoid': 'mGENRKrdoGY'}, true).then(yt => {
       const iframe = yt.querySelector('iframe');
       expect(iframe).to.not.be.null;
-      expect(iframe.className).to.match(/-amp-fill-content/);
+      expect(iframe.className).to.match(/i-amphtml-fill-content/);
     });
   });
 
@@ -102,6 +103,7 @@ describe('amp-youtube', function() {
       expect(imgPlaceholder.className).to.not.match(/amp-hidden/);
       expect(imgPlaceholder.src).to.be.equal(
           'https://i.ytimg.com/vi/mGENRKrdoGY/sddefault.jpg#404_is_fine');
+      expect(imgPlaceholder.getAttribute('referrerpolicy')).to.equal('origin');
     }).then(yt => {
       const iframe = yt.querySelector('iframe');
       expect(iframe).to.not.be.null;
@@ -119,12 +121,14 @@ describe('amp-youtube', function() {
       const imgPlaceholder = yt.querySelector('img[placeholder]');
       expect(imgPlaceholder).to.not.be.null;
       expect(imgPlaceholder.className).to.not.match(/amp-hidden/);
+      expect(imgPlaceholder.getAttribute('referrerpolicy')).to.equal('origin');
     }).then(yt => {
       const iframe = yt.querySelector('iframe');
       expect(iframe).to.not.be.null;
 
       const imgPlaceholder = yt.querySelector('img[placeholder]');
       expect(imgPlaceholder.className).to.match(/amp-hidden/);
+      expect(imgPlaceholder.getAttribute('referrerpolicy')).to.equal('origin');
 
       expect(imgPlaceholder.src).to.equal(
           'https://i.ytimg.com/vi/mGENRKrdoGY/sddefault.jpg#404_is_fine');
@@ -171,25 +175,31 @@ describe('amp-youtube', function() {
 
       expect(yt.implementation_.playerState_).to.equal(0);
 
+      sendFakeInfoDeliveryMessage(yt, iframe, {playerState: 1});
+
+      expect(yt.implementation_.playerState_).to.equal(1);
+
+      // YouTube Player sometimes sends parsed-JSON data. Test that we're
+      // handling it correctly.
       yt.implementation_.handleYoutubeMessages_({
         origin: 'https://www.youtube.com',
         source: iframe.contentWindow,
-        data: JSON.stringify({
+        data: {
           event: 'infoDelivery',
-          info: {playerState: 1},
-        }),
+          info: {playerState: 2},
+        },
       });
 
-      expect(yt.implementation_.playerState_).to.equal(1);
+      expect(yt.implementation_.playerState_).to.equal(2);
     });
 
   });
 
   it('should not pause when video not playing', () => {
     return getYt({'data-videoid': 'mGENRKrdoGY'}).then(yt => {
-      sandbox.spy(yt.implementation_, 'pauseVideo_');
+      sandbox.spy(yt.implementation_, 'pause');
       yt.implementation_.pauseCallback();
-      expect(yt.implementation_.pauseVideo_.called).to.be.false;
+      expect(yt.implementation_.pause.called).to.be.false;
     });
 
   });
@@ -197,9 +207,9 @@ describe('amp-youtube', function() {
   it('should pause if the video is playing', () => {
     return getYt({'data-videoid': 'mGENRKrdoGY'}).then(yt => {
       yt.implementation_.playerState_ = 1;
-      sandbox.spy(yt.implementation_, 'pauseVideo_');
+      sandbox.spy(yt.implementation_, 'pause');
       yt.implementation_.pauseCallback();
-      expect(yt.implementation_.pauseVideo_.called).to.be.true;
+      expect(yt.implementation_.pause.called).to.be.true;
     });
   });
 
@@ -210,8 +220,85 @@ describe('amp-youtube', function() {
       'data-param-my-param': 'hello world',
     }).then(yt => {
       const iframe = yt.querySelector('iframe');
-      expect(iframe.src).to.contain('autoplay=1');
       expect(iframe.src).to.contain('myParam=hello%20world');
+      // data-param-autoplay is black listed in favour of just autoplay
+      expect(iframe.src).to.not.contain('autoplay=1');
+      // playsinline should default to 1 if not provided.
+      expect(iframe.src).to.contain('playsinline=1');
     });
   });
+
+  it('should change defaults for some data-param-* when autoplaying', () => {
+    return getYt({
+      'autoplay': '',
+      'data-videoid': 'mGENRKrdoGY',
+      'data-param-playsinline': '0',
+    }).then(yt => {
+      const iframe = yt.querySelector('iframe');
+      // playsinline must be set 1 even if specified as 0
+      expect(iframe.src).to.contain('playsinline=1');
+      // annotation policy should default to 3 if not specified.
+      expect(iframe.src).to.contain('iv_load_policy=3');
+    });
+  });
+
+  it('should preload the final url', () => {
+    return getYt({
+      'autoplay': '',
+      'data-videoid': 'mGENRKrdoGY',
+      'data-param-playsinline': '0',
+    }).then(yt => {
+      const src = yt.querySelector('iframe').src;
+      const preloadSpy = sandbox.spy(yt.implementation_.preconnect, 'url');
+      yt.implementation_.preconnectCallback();
+      preloadSpy.should.have.been.calledWithExactly(src);
+    });
+  });
+
+  it('should forward certain events from youtube to the amp element', () => {
+    return getYt({'data-videoid': 'mGENRKrdoGY'}).then(yt => {
+      const iframe = yt.querySelector('iframe');
+
+      return Promise.resolve()
+      .then(() => {
+        const p = listenOncePromise(yt, VideoEvents.MUTED);
+        sendFakeInfoDeliveryMessage(yt, iframe, {muted: true});
+        return p;
+      })
+      .then(() => {
+        const p = listenOncePromise(yt, VideoEvents.PLAY);
+        sendFakeInfoDeliveryMessage(yt, iframe, {playerState: 1});
+        return p;
+      })
+      .then(() => {
+        const p = listenOncePromise(yt, VideoEvents.PAUSE);
+        sendFakeInfoDeliveryMessage(yt, iframe, {playerState: 2});
+        return p;
+      })
+      .then(() => {
+        const p = listenOncePromise(yt, VideoEvents.UNMUTED);
+        sendFakeInfoDeliveryMessage(yt, iframe, {muted: false});
+        return p;
+      }).then(() => {
+        // Should not send the unmute event twice if already sent once.
+        const p = listenOncePromise(yt, VideoEvents.UNMUTED).then(() => {
+          assert.fail('Should not have dispatch unmute message twice');
+        });
+        sendFakeInfoDeliveryMessage(yt, iframe, {muted: false});
+        const successTimeout = timer.timeoutPromise(10, true);
+        return Promise.race([p, successTimeout]);
+      });
+    });
+  });
+
+  function sendFakeInfoDeliveryMessage(yt, iframe, info) {
+    yt.implementation_.handleYoutubeMessages_({
+      origin: 'https://www.youtube.com',
+      source: iframe.contentWindow,
+      data: JSON.stringify({
+        event: 'infoDelivery',
+        info,
+      }),
+    });
+  }
 });

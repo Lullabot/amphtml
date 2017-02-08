@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {Timer} from '../../../../src/timer';
+import {timerFor} from '../../../../src/timer';
 import {createIframePromise} from '../../../../testing/iframe';
 import '../amp-image-lightbox';
 import {
@@ -34,7 +34,7 @@ describe('amp-image-lightbox component', () => {
       const el = iframe.doc.createElement('amp-image-lightbox');
       el.setAttribute('layout', 'nodisplay');
       iframe.doc.body.appendChild(el);
-      return new Timer(window).promise(16).then(() => {
+      return timerFor(window).promise(16).then(() => {
         el.implementation_.buildCallback();
         return el;
       });
@@ -99,13 +99,13 @@ describe('amp-image-lightbox component', () => {
       ampImage.setAttribute('src', 'data:');
       impl.activate({source: ampImage});
 
-      expect(viewportOnChanged.callCount).to.equal(1);
+      expect(viewportOnChanged).to.be.calledOnce;
       expect(impl.unlistenViewport_).to.not.equal(null);
-      expect(historyPush.callCount).to.equal(1);
-      expect(enter.callCount).to.equal(1);
+      expect(historyPush).to.be.calledOnce;
+      expect(enter).to.be.calledOnce;
       expect(impl.sourceElement_).to.equal(ampImage);
-      expect(enterLightboxMode.callCount).to.equal(1);
-      expect(leaveLightboxMode.callCount).to.equal(0);
+      expect(enterLightboxMode).to.be.calledOnce;
+      expect(leaveLightboxMode).to.have.not.been.called;
     });
   });
 
@@ -133,12 +133,12 @@ describe('amp-image-lightbox component', () => {
       impl.close();
 
       expect(impl.active_).to.equal(false);
-      expect(exit.callCount).to.equal(1);
-      expect(viewportOnChangedUnsubscribed.callCount).to.equal(1);
+      expect(exit).to.be.calledOnce;
+      expect(viewportOnChangedUnsubscribed).to.be.calledOnce;
       expect(impl.unlistenViewport_).to.equal(null);
-      expect(leaveLightboxMode.callCount).to.equal(1);
-      expect(enterLightboxMode.callCount).to.equal(0);
-      expect(historyPop.callCount).to.equal(1);
+      expect(leaveLightboxMode).to.be.calledOnce;
+      expect(enterLightboxMode).to.have.not.been.called;
+      expect(historyPop).to.be.calledOnce;
     });
   });
 
@@ -146,6 +146,9 @@ describe('amp-image-lightbox component', () => {
     return getImageLightbox().then(lightbox => {
       const impl = lightbox.implementation_;
       const setupCloseSpy = sandbox.spy(impl, 'close');
+      const nullAddEventListenerSpy = sandbox.spy(
+          impl.win.document.documentElement, 'addEventListener')
+          .withArgs('keydown', null);
       const viewportOnChanged = sandbox.spy();
       const enterLightboxMode = sandbox.spy();
       const leaveLightboxMode = sandbox.spy();
@@ -170,7 +173,12 @@ describe('amp-image-lightbox component', () => {
       ampImage.setAttribute('height', '100');
       impl.activate({source: ampImage});
       impl.closeOnEscape_({keyCode: 27});
-      expect(setupCloseSpy.callCount).to.equal(1);
+      expect(setupCloseSpy).to.be.calledOnce;
+
+      // Regression test: ensure escape event listener is bound properly
+      expect(nullAddEventListenerSpy).to.have.not.been.called;
+      impl.activate({source: ampImage});
+      expect(nullAddEventListenerSpy).to.have.not.been.called;
     });
   });
 });
@@ -183,6 +191,7 @@ describe('amp-image-lightbox image viewer', () => {
   let lightbox;
   let lightboxMock;
   let imageViewer;
+  let loadPromiseStub;
 
   beforeEach(() => {
     sandbox = sinon.sandbox.create();
@@ -195,8 +204,10 @@ describe('amp-image-lightbox image viewer', () => {
       },
     };
     lightboxMock = sandbox.mock(lightbox);
+    loadPromiseStub = sandbox.stub().returns(Promise.resolve());
 
-    imageViewer = new ImageViewer(lightbox);
+    sandbox.stub(timerFor(window), 'promise').returns(Promise.resolve());
+    imageViewer = new ImageViewer(lightbox, window, loadPromiseStub);
     document.body.appendChild(imageViewer.getElement());
   });
 
@@ -350,6 +361,18 @@ describe('amp-image-lightbox image viewer', () => {
     expect(imageViewer.imageBox_.left).to.be.closeTo(10, 1);
     expect(imageViewer.imageBox_.top).to.equal(0);
   });
+
+  it('should use the load function passed in when switching images', () => {
+    expect(loadPromiseStub).to.have.not.been.called;
+    imageViewer.getElement().style.width = '100px';
+    imageViewer.getElement().style.height = '200px';
+    imageViewer.srcset_ = parseSrcset('image1');
+    imageViewer.sourceWidth_ = 80;
+    imageViewer.sourceHeight_ = 60;
+    return imageViewer.measure().then(() => {
+      expect(loadPromiseStub).to.be.calledOnce;
+    });
+  });
 });
 
 
@@ -373,7 +396,7 @@ describe('amp-image-lightbox image viewer gestures', () => {
     };
     lightboxMock = sandbox.mock(lightbox);
 
-    imageViewer = new ImageViewer(lightbox);
+    imageViewer = new ImageViewer(lightbox, window);
     document.body.appendChild(imageViewer.getElement());
 
     imageViewer.getElement().style.width = '100px';
@@ -461,7 +484,7 @@ describe('amp-image-lightbox image viewer gestures', () => {
     imageViewer.updateSrc_ = updateSrc;
     imageViewer.onZoomInc_(10, 10, -10, -10);
     return imageViewer.onZoomRelease_(10, 10, -10, -10, 0, 0).then(() => {
-      expect(updateSrc.callCount).to.equal(1);
+      expect(updateSrc).to.be.calledOnce;
       expect(imageViewer.posX_).to.be.closeTo(6.5, 1e-1);
       expect(imageViewer.startX_).to.be.closeTo(6.5, 1e-1);
       expect(imageViewer.posY_).to.equal(0);

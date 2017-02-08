@@ -31,11 +31,11 @@ limitations under the License.
   </tr>
   <tr>
     <td class="col-fourty"><strong><a href="https://www.ampproject.org/docs/guides/responsive/control_layout.html">Supported Layouts</a></strong></td>
-    <td>FILL, FIXED, FIXED_HEIGHT, FLEX_ITEM, RESPONSIVE</td>
+    <td>fill, fixed, fixed-height, flex-item, responsive</td>
   </tr>
   <tr>
     <td width="40%"><strong>Examples</strong></td>
-    <td><a href="https://ampbyexample.com/components/amp-vimeo/">amp-vimeo.html</a><br /><a href="https://github.com/ampproject/amphtml/blob/master/examples/vimeo.amp.html">vimeo.amp.html</a></td>
+    <td><a href="https://ampbyexample.com/components/amp-vimeo/">Annotated code example for amp-vimeo</a></td>
   </tr>
 </table>
 
@@ -52,11 +52,13 @@ With responsive layout, the width and height from the example should yield corre
 
 ## Attributes
 
-**data-videoid**
+**data-videoid** (required)
 
-The Vimeo video id found in every Vimeo video page URL
+The Vimeo video id found in every Vimeo video page URL For example, `27246366` is the video id for the following url: https://vimeo.com/27246366.
 
-E.g. in https://vimeo.com/27246366 27246366 is the video id.
+**common attributes**
+
+This element includes [common attributes](https://www.ampproject.org/docs/reference/common_attributes) extended to AMP components.
 
 ## Validation
 

@@ -31,11 +31,11 @@ limitations under the License.
   </tr>
   <tr>
     <td class="col-fourty"><strong><a href="https://www.ampproject.org/docs/guides/responsive/control_layout.html">Supported Layouts</a></strong></td>
-    <td>FILL, FIXED, FIXED_HEIGHT, FLEX_ITEM, NODISPLAY, RESPONSIVE</td>
+    <td>fill, fixed, fixed-height, flex-item, nodisplay, responsive</td>
   </tr>
   <tr>
     <td width="40%"><strong>Examples</strong></td>
-    <td><a href="https://amp-by-example.appspot.com/amp-kaltura-player.html">amp-kaltura-player.html</a><br /><a href="https://github.com/ampproject/amphtml/blob/master/examples/kaltura.amp.html">kaltura.amp.html</a></td>
+    <td><a href="https://ampbyexample.com/components/amp-kaltura-player/">Annotated code example for amp-kaltura-player</a></td>
   </tr>
 </table>
 
@@ -77,6 +77,10 @@ All `data-param-*` attributes will be added as query parameter to the player ifr
 Keys and values will be URI encoded. Keys will be camel cased.
 
 - `data-param-streamerType="auto"` becomes `&flashvars[streamerType]=auto`
+
+**common attributes**
+
+This element includes [common attributes](https://www.ampproject.org/docs/reference/common_attributes) extended to AMP components.
 
 ## Validation
 

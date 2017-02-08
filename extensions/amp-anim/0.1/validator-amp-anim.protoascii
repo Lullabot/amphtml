@@ -15,9 +15,13 @@
 #
 
 tags: {  # amp-anim
-  tag_name: "script"
+  html_format: AMP
+  html_format: AMP4ADS
+  tag_name: "SCRIPT"
   spec_name: "amp-anim extension .js script"
-  mandatory_parent: "head"
+  mandatory_parent: "HEAD"
+  unique_warning: true
+  extension_unused_unless_tag_present: "amp-anim"
   attrs: {
     name: "async"
     mandatory: true
@@ -29,6 +33,7 @@ tags: {  # amp-anim
     value: "amp-anim"
     dispatch_key: true
   }
+  attrs: { name: "nonce" }
   attrs: {
     name: "src"
     mandatory: true
@@ -36,7 +41,7 @@ tags: {  # amp-anim
   }
   attrs: {
     name: "type"
-    value: "text/javascript"
+    value_casei: "text/javascript"
   }
   cdata: {
     blacklisted_cdata_regex: {
@@ -47,9 +52,10 @@ tags: {  # amp-anim
   spec_url: "https://www.ampproject.org/docs/reference/extended/amp-anim.html"
 }
 tags: {  # <amp-anim>
-  tag_name: "amp-anim"
-  disallowed_ancestor: "head"
-  disallowed_ancestor: "amp-sidebar"
+  html_format: AMP
+  html_format: AMP4ADS
+  tag_name: "AMP-ANIM"
+  disallowed_ancestor: "AMP-SIDEBAR"
   also_requires_tag: "amp-anim extension .js script"
   attrs: { name: "alt" }
   attrs: { name: "attribution" }
