@@ -31,19 +31,20 @@ limitations under the License.
   </tr>
   <tr>
     <td class="col-fourty"><strong><a href="https://www.ampproject.org/docs/guides/responsive/control_layout.html">Supported Layouts</a></strong></td>
-    <td>FILL, FIXED, FIXED_HEIGHT, FLEX_ITEM, NODISPLAY, RESPONSIVE</td>
+    <td>fill, fixed, fixed-height, flex-item, nodisplay, responsive</td>
   </tr>
   <tr>
     <td class="col-fourty"><strong>Examples</strong></td>
-    <td><a href="https://ampbyexample.com/components/amp-anim">amp-anim.html</a><br /><a href="https://github.com/ampproject/amphtml/blob/master/examples/everything.amp.html">everything.amp.html</a></td>
+    <td><a href="https://ampbyexample.com/components/amp-anim/">Annotated code example for amp-anim</a></td>
   </tr>
 </table>
 
 ## Behavior
 
-The `amp-anim` component is very similar to the `amp-image` element, and provides additional functionality to manage loading and playing of animated images such as GIFs.
+The `amp-anim` component is very similar to the `amp-img` element, and provides additional functionality to manage loading and playing of animated images such as GIFs.
 
 The `amp-anim` component can also have an optional placeholder child, to display while the `src` file is loading. The placeholder is specified via the `placeholder` attribute:
+
 ```html
 <amp-anim width=400 height=300 src="my-gif.gif">
   <amp-img placeholder width=400 height=300 src="my-gif-screencap.jpg">
@@ -68,7 +69,15 @@ A string of alternate text, similar to the `alt` attribute on `img`.
 
 **attribution**
 
-A string that indicates the attribution of the image. E.g. `attribution="CC courtesy of Cats on Flicker"`
+A string that indicates the attribution of the image. For example, `attribution="CC courtesy of Cats on Flicker"`.
+
+**height** and **width**
+
+An explicit size of the image, which is used by the AMP runtime to determine the aspect ratio without fetching the image. 
+
+**common attributes**
+
+This element includes [common attributes](https://www.ampproject.org/docs/reference/common_attributes) extended to AMP components.
 
 
 ## Styling

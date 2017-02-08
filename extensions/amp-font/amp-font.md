@@ -31,11 +31,11 @@ limitations under the License.
   </tr>
   <tr>
     <td class="col-fourty"><strong><a href="https://www.ampproject.org/docs/guides/responsive/control_layout.html">Supported Layouts</a></strong></td>
-    <td>NODISPLAY</td>
+    <td>nodisplay</td>
   </tr>
   <tr>
     <td width="40%"><strong>Examples</strong></td>
-    <td><a href="https://github.com/ampproject/amphtml/blob/master/examples/font.amp.html">font.amp.html</a></td>
+    <td><a href="https://ampbyexample.com/components/amp-font/">Annotated code example for amp-font</a></td>
   </tr>
 </table>
 
@@ -43,7 +43,7 @@ limitations under the License.
 
 The `amp-font` extension should be used for controlling timeouts on font loading.
 
-The `amp-font` extension allows adding and removing CSS classes from document.documentElement based on whether a font was loaded or is in error-state.
+The `amp-font` extension allows adding and removing CSS classes from `document.documentElement` based on whether a font was loaded or is in error-state.
 
 Example:
 ```html
@@ -101,6 +101,10 @@ CSS class that would be removed from the `document.documentElement` and `documen
 **font-weight, font-style, font-variant**
 
 The attributes above should all behave like they do on standard elements.
+
+**layout**
+
+Must be `nodisplay`.
 
 ## Validation
 

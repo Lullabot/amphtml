@@ -85,10 +85,16 @@
       bottom: 0;
       overflow-x: hidden;
       visibility: hidden;
+      -webkit-transform: translateX(-100%);
+      -ms-transform: translateX(-100%);
+      transform: translateX(-100%);
     }
 
     viewer[data-show-container="1"] #container1 {
       visibility: visible;
+      -webkit-transform: none;
+      -ms-transform: none;
+      transform: none;
     }
 
     viewer[data-show-container="1"] #show-container1-anchor {
@@ -97,6 +103,9 @@
 
     viewer[data-show-container="2"] #container2 {
       visibility: visible;
+      -webkit-transform: none;
+      -ms-transform: none;
+      transform: none;
     }
 
     viewer[data-show-container="2"] #show-container2-anchor {
@@ -105,9 +114,34 @@
 
     viewer[data-show-container="3"] #container3 {
       visibility: visible;
+      -webkit-transform: none;
+      -ms-transform: none;
+      transform: none;
     }
 
     viewer[data-show-container="3"] #show-container3-anchor {
+      text-decoration: underline;
+    }
+
+    viewer[data-show-container="4"] #container4 {
+      visibility: visible;
+      -webkit-transform: none;
+      -ms-transform: none;
+      transform: none;
+    }
+
+    viewer[data-show-container="4"] #show-container4-anchor {
+      text-decoration: underline;
+    }
+
+    viewer[data-show-container="5"] #container5 {
+      visibility: visible;
+      -webkit-transform: none;
+      -ms-transform: none;
+      transform: none;
+    }
+
+    viewer[data-show-container="5"] #show-container5-anchor {
       text-decoration: underline;
     }
 
@@ -130,10 +164,8 @@
   <script src="./viewer-integr-messaging.js"></script>
 
   <script>
-
-    var SENTINEL = '__AMP__';
-
     var allViewers = [];
+    var currentContainerId = null;
 
     function Viewer(containerId, id, url, visible) {
       this.id = id;
@@ -158,13 +190,12 @@
       //     ' allow-popups-to-escape-sandbox allow-same-origin');
 
       this.visibilityToggle_ = document.getElementById('visibilityToggle');
-      this.visibilityToggle_.onclick = function() {
-        this.toggleVisibility(this.visibilityState_ != 'visible');
-      }.bind(this);
-      if (visible) {
-        this.updateVisibilityToggle_();
-      }
-
+      this.visibilityToggle_.addEventListener('click', function() {
+        var activeId = this.viewer.getAttribute('data-show-container');
+        if (activeId == this.id) {
+          this.toggleVisibility(this.visibilityState_ != 'visible', true);
+        }
+      }.bind(this));
       this.viewer.classList.add(this.viewportType_);
 
       if (this.viewportType_ == 'natural' && !this.isIos_) {
@@ -189,8 +220,9 @@
         paddingTop: this.header./*OK*/offsetHeight,
         visibilityState: this.visibilityState_,
         prerenderSize: this.prerenderSize_,
-        viewerorigin: parseUrl(window.location.href).origin,
+        origin: parseUrl(window.location.href).origin,
         csi: this.csi_,
+        cap: 'foo,a2a',
       };
       log('Params:' + JSON.stringify(params));
 
@@ -205,9 +237,6 @@
       this.iframe.style.display = 'none';
       this.container.appendChild(this.iframe);
 
-      // Notice that name can only be set once the IFrame is in the DOM.
-      this.iframe.contentWindow.name = SENTINEL + paramsStr(params);
-
       this.awaitHandshake_();
 
       this.iframe.onload = this.loaded_.bind(this);
@@ -220,18 +249,26 @@
 
 
     Viewer.prototype.awaitHandshake_ = function() {
+      log('Viewer.prototype.awaitHandshake_');
       var targetId = this.iframe.id;
       var target = this.iframe.contentWindow;
       var targetOrigin = this.frameOrigin_;
       var listener = function(event) {
         if (event.origin == targetOrigin &&
-                event.data == 'amp-handshake-request' &&
+                this.isChannelOpen_(event.data) &&
                 (!event.source || event.source == target)) {
+          log('event: ',event);
           log('Viewer ' + this.id + ' messaging established with ',
               targetOrigin);
           window.removeEventListener('message', listener, false);
 
-          target./*OK*/postMessage('amp-handshake-response', targetOrigin);
+          const message = {
+            app: APP,
+            requestid: event.data.requestid,
+            data: {},
+            type: MessageType.RESPONSE,
+          };
+          target./*OK*/postMessage(message, targetOrigin);
 
           this.messaging_ = new ViewerMessaging(target, targetOrigin,
               this.processRequest_.bind(this), targetId);
@@ -244,15 +281,20 @@
       window.addEventListener('message', listener, false);
     };
 
+    Viewer.prototype.isChannelOpen_ = function(eventData) {
+      return eventData.app == APP &&
+        eventData.name == 'channelOpen';
+    };
 
-    Viewer.prototype.toggleVisibility = function(visible) {
+
+    Viewer.prototype.toggleVisibility = function(visible, updateToggle) {
       log('Viewer ' + this.id + ' visibility -> ', visible);
       this.visibilityState_ = visible ? 'visible' : 'hidden';
       this.sendRequest_('visibilitychange', {
         state: this.visibilityState_,
         prerenderSize: this.prerenderSize
       }, true);
-      if (visible) {
+      if (updateToggle) {
         this.updateVisibilityToggle_();
       }
     };
@@ -289,6 +331,7 @@
 
 
     Viewer.prototype.onScroll_ = function() {
+      log('Viewer.prototype.onScroll_');
       this.sendRequest_('viewport', {
         scrollTop: this.container./*OK*/scrollTop
       }, false);
@@ -373,8 +416,13 @@
       });
     };
 
+    Viewer.prototype.scrollAmpDoc = function(scrollTop) {
+      log('viewer scroll amp doc: ', scrollTop);
+      this.sendRequest_('scroll', {scrollTop}, true);
+    };
 
     Viewer.prototype.processRequest_ = function(type, data, awaitResponse) {
+      log('Viewer.prototype.processRequest_');
       if (type == 'documentLoaded') {
         return this.documentReady_();
       }
@@ -405,15 +453,32 @@
       }
       if (type == 'sendCsi') {
         log('[CSI] sendCsi.');
+        return;
       }
       if (type == 'scroll') {
         return;
       }
+      if (type == 'a2a') {
+        log('a2a navigation', data);
+        return;
+      }
+      if (type == 'unloaded') {
+        log('unloaded');
+        return this.handleUnload_();
+      }
       return Promise.reject('request not supported: ' + type);
     };
 
+    Viewer.prototype.handleUnload_ = function(type, data, awaitResponse) {
+      log('Viewer.prototype.handleUnload_');
+      if (this.messaging_) {
+        this.messaging_ = null;
+      }
+      return goog.Promise.resolve();
+    };
 
     Viewer.prototype.sendRequest_ = function(type, data, awaitResponse) {
+      log('Viewer.prototype.sendRequest_');
       if (!this.messaging_) {
         return;
       }
@@ -472,7 +537,7 @@
       new Viewer(
           'container2',
           '2',
-          './article-access.amp.max.html',
+          './article.amp.max.html',
           false).start();
       addShowContainer('2');
 
@@ -482,6 +547,20 @@
           './article-access.amp.max.html',
           false).start();
       addShowContainer('3');
+
+      new Viewer(
+          'container4',
+          '4',
+          './alp.amp.max.html',
+          false).start();
+      addShowContainer('4');
+
+      new Viewer(
+          'container5',
+          '5',
+          './article-fixed-header.amp.max.html',
+          false).start();
+      addShowContainer('5');
 
       showContainer('1');
     }
@@ -498,8 +577,19 @@
       var viewerEl = document.querySelector('viewer');
       viewerEl.setAttribute('data-show-container', id);
       allViewers.forEach(function(viewer) {
-        viewer.toggleVisibility(viewer.id == id);
+        viewer.toggleVisibility(viewer.id == id, viewer.id == id);
       });
+      currentContainerId = id;
+    }
+
+    function getContainer(id) {
+      return allViewers[id - 1];
+    }
+
+    function viewerScrollCurrentAmpDoc(scrollTop) {
+      if (currentContainerId) {
+        getContainer(currentContainerId).scrollAmpDoc(scrollTop);
+      }
     }
 
     window.onload = loadAmpDoc;
@@ -512,6 +602,8 @@
       <a class="show-container-anchor" id="show-container1-anchor">One</a>
       <a class="show-container-anchor" id="show-container2-anchor">Two</a>
       <a class="show-container-anchor" id="show-container3-anchor">Three</a>
+      <a class="show-container-anchor" id="show-container4-anchor">ALP</a>
+      <a class="show-container-anchor" id="show-container5-anchor">Five</a>
       <a>|</a>
       <a id="visibilityToggle">Visible</a>
     </header>
@@ -526,6 +618,16 @@
       </div>
     </container>
     <container id="container3">
+      <div class="wait">
+        Please wait, the AMP doc will appear here...
+      </div>
+    </container>
+    <container id="container4">
+      <div class="wait">
+        Please wait, the AMP doc will appear here...
+      </div>
+    </container>
+    <container id="container5">
       <div class="wait">
         Please wait, the AMP doc will appear here...
       </div>

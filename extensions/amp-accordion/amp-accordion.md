@@ -31,11 +31,11 @@ limitations under the License.
   </tr>
   <tr>
     <td class="col-fourty"><strong><a href="https://www.ampproject.org/docs/guides/responsive/control_layout.html">Supported Layouts</a></strong></td>
-    <td>CONTAINER</td>
+    <td>container</td>
   </tr>
   <tr>
     <td class="col-fourty"><strong>Examples</strong></td>
-    <td><a href="https://ampbyexample.com/components/amp-accordion">amp-accordion.html</a></td>
+    <td><a href="https://ampbyexample.com/components/amp-accordion/">Annotated code example for amp-accordion</a></td>
   </tr>
 </table>
 
@@ -48,6 +48,7 @@ Each of the `amp-accordion` component’s immediate children is considered a sec
 - The first child (of the section) must be one of `h1`, `h2`, ..., `h6`, `header`, and is the heading of the section.
 - The second child (of the section) can be any tag allowed in AMP HTML and is the content of the section.
 - Clicking/tapping on the heading of a section expands/ or collapses the section.
+- The collapsed/expanded state of each section in the `amp-accordion` element will be preserved for the session level. The user has the option to opt out of this by adding the `disable-session-states` attribute to the `amp-accordion` tag.
 
 Example:
 
@@ -69,6 +70,10 @@ Example:
 ```
 
 ## Attributes
+
+**disable-session-states**
+
+The `disable-session-states` attribute can be set on `<amp-accordion>` to opt out of preserving the collapsed/expanded state of the `amp-accordion` element.
 
 **expanded**
 

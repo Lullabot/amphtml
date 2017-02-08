@@ -15,9 +15,12 @@
 #
 
 tags: {  # amp-sidebar
-  tag_name: "script"
-  mandatory_parent: "head"
+  html_format: AMP
+  tag_name: "SCRIPT"
+  mandatory_parent: "HEAD"
   spec_name: "amp-sidebar extension .js script"
+  unique_warning: true
+  extension_unused_unless_tag_present: "amp-sidebar"
   attrs: {
     name: "async"
     mandatory: true
@@ -29,6 +32,7 @@ tags: {  # amp-sidebar
     value: "amp-sidebar"
     dispatch_key: true
   }
+  attrs: { name: "nonce" }
   attrs: {
     name: "src"
     value_regex: "https://cdn\\.ampproject\\.org/v0/amp-sidebar-(latest|0\\.1).js"
@@ -36,7 +40,7 @@ tags: {  # amp-sidebar
   }
   attrs: {
     name: "type"
-    value: "text/javascript"
+    value_casei: "text/javascript"
   }
   cdata: {
     blacklisted_cdata_regex: {
@@ -47,18 +51,18 @@ tags: {  # amp-sidebar
   spec_url: "https://www.ampproject.org/docs/reference/extended/amp-sidebar.html"
 }
 tags: {  # <amp-sidebar>
-  tag_name: "amp-sidebar"
+  html_format: AMP
+  tag_name: "AMP-SIDEBAR"
   unique: true
-  mandatory_parent: "body"
-  disallowed_ancestor: "head"
-  disallowed_ancestor: "amp-sidebar"
+  mandatory_parent: "BODY"
+  disallowed_ancestor: "AMP-SIDEBAR"
   also_requires_tag: "amp-sidebar extension .js script"
   attrs: {
     name: "side"
     value_regex: "(left|right)"
   }
   attr_lists: "extended-amp-global"
-  spec_url: "https://github.com/ampproject/amphtml/blob/master/extensions/amp-sidebar/amp-sidebar.md"
+  spec_url: "https://www.ampproject.org/docs/reference/extended/amp-sidebar.html"
   amp_layout: {
     supported_layouts: NODISPLAY
   }

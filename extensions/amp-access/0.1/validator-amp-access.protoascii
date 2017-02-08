@@ -14,9 +14,12 @@
 # limitations under the license.
 #
 tags: {  # amp-access
-  tag_name: "script"
+  html_format: AMP
+  tag_name: "SCRIPT"
   spec_name: "amp-access extension .js script"
-  mandatory_parent: "head"
+  mandatory_parent: "HEAD"
+  unique_warning: true
+  extension_unused_unless_tag_present: "amp-access extension .json script"
   attrs: {
     name: "async"
     mandatory: true
@@ -28,6 +31,7 @@ tags: {  # amp-access
     value: "amp-access"
     dispatch_key: true
   }
+  attrs: { name: "nonce" }
   attrs: {
     name: "src"
     mandatory: true
@@ -35,7 +39,7 @@ tags: {  # amp-access
   }
   attrs: {
     name: "type"
-    value: "text/javascript"
+    value_casei: "text/javascript"
   }
   cdata: {
     blacklisted_cdata_regex: {
@@ -46,9 +50,11 @@ tags: {  # amp-access
   spec_url: "https://www.ampproject.org/docs/reference/extended/amp-access.html"
 }
 tags: {  # amp-access (json)
-  tag_name: "script"
+  html_format: AMP
+  tag_name: "SCRIPT"
   spec_name: "amp-access extension .json script"
-  mandatory_parent: "head"
+  unique: true
+  mandatory_parent: "HEAD"
   also_requires_tag: "amp-access extension .js script"
   also_requires_tag: "amp-analytics extension .js script"
   attrs: {
@@ -57,10 +63,11 @@ tags: {  # amp-access (json)
     value: "amp-access"
     dispatch_key: true
   }
+  attrs: { name: "nonce" }
   attrs: {
     name: "type"
     mandatory: true
-    value: "application/json"
+    value_casei: "application/json"
   }
   # TODO(gregable): Validate the cdata contents of this script tag.
   cdata: {
