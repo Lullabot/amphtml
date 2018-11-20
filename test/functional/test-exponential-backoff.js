@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import {exponentialBackoff} from '../../src/exponential-backoff';
-import * as sinon from 'sinon';
+import {exponentialBackoff, exponentialBackoffClock}
+  from '../../src/exponential-backoff';
 
 
 describe('exponentialBackoff', () => {
@@ -24,8 +24,9 @@ describe('exponentialBackoff', () => {
   let clock;
 
   beforeEach(() => {
-    sandbox = sinon.sandbox.create();
+    sandbox = sinon.sandbox;
     clock = sandbox.useFakeTimers();
+    sandbox.stub(Math, 'random').callsFake(() => 1);
   });
 
   afterEach(() => {
@@ -71,5 +72,24 @@ describe('exponentialBackoff', () => {
     expect(count).to.equal(3);
     clock.tick(701);
     expect(count).to.equal(4);
+  });
+
+  it('should exponentiate correctly', () => {
+    const backoff = exponentialBackoffClock();
+    const backoff2 = exponentialBackoffClock();
+
+    // base of 2 = 1000 - 300 (30% jitter) = 700
+    expect(backoff()).to.equal(700);
+    expect(backoff()).to.equal(1400);
+    // tick backoff2
+    expect(backoff2()).to.equal(700);
+    // back to backoff
+    expect(backoff()).to.equal(2800);
+    expect(backoff()).to.equal(5600);
+    expect(backoff()).to.equal(11200);
+    expect(backoff()).to.equal(22400);
+
+    expect(backoff2()).to.equal(1400);
+    expect(backoff2()).to.equal(2800);
   });
 });

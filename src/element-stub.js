@@ -15,15 +15,22 @@
  */
 
 import {BaseElement} from './base-element';
-
+import {dev} from './log';
 
 /** @type {!Array} */
 export const stubbedElements = [];
 
+
 export class ElementStub extends BaseElement {
+  /** @param {!AmpElement} element */
   constructor(element) {
     super(element);
     stubbedElements.push(this);
+  }
+
+  /** @override */
+  getLayoutPriority() {
+    return dev().assert(0, 'Cannot get priority of stubbed element');
   }
 
   /** @override */
@@ -31,5 +38,11 @@ export class ElementStub extends BaseElement {
     // Always returns true and will eventually call this method on the actual
     // element.
     return true;
+  }
+
+  /** @override */
+  reconstructWhenReparented() {
+    // No real state so no reason to reconstruct.
+    return false;
   }
 }

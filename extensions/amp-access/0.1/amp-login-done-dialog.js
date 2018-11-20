@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-import {assertAbsoluteHttpOrHttpsUrl, parseQueryString} from '../../../src/url';
+import {
+  assertAbsoluteHttpOrHttpsUrl,
+  parseQueryString,
+  tryDecodeUriComponent,
+} from '../../../src/url';
 import {listen} from '../../../src/event-helper';
 
 
@@ -57,7 +61,12 @@ export class LoginDoneDialog {
 
     if (query['url']) {
       // Source URL is specified. Try to redirect back.
-      this.win.location.replace(assertAbsoluteHttpOrHttpsUrl(query['url']));
+      let url = query['url'];
+      // Protect against double-encoding.
+      if (/^https?\%/i.test(url)) {
+        url = tryDecodeUriComponent(url);
+      }
+      this.win.location.replace(assertAbsoluteHttpOrHttpsUrl(url));
       return Promise.resolve();
     }
 
@@ -74,7 +83,7 @@ export class LoginDoneDialog {
   setStyles_() {
     const doc = this.win.document;
     const style = doc.createElement('style');
-    style.textContent = this.buildStyles_();
+    style./*OK*/textContent = this.buildStyles_();
     doc.head.appendChild(style);
   }
 
@@ -89,8 +98,7 @@ export class LoginDoneDialog {
    */
   buildStyles_() {
     const query = parseQueryString(this.win.location.search);
-    const doc = this.win.document;
-    const nav = this.win.navigator;
+    const {document: doc, navigator: nav} = this.win;
     const langSet = [query['hl'], nav.language, nav.userLanguage, 'en-US'];
     for (let i = 0; i < langSet.length; i++) {
       const lang = langSet[i];
@@ -141,7 +149,7 @@ export class LoginDoneDialog {
     const response = this.win.location.hash;
     let unlisten = () => {};
     return new Promise((resolve, reject) => {
-      const opener = this.win.opener;
+      const {opener} = this.win;
       if (!opener) {
         reject(new Error('Opener not available'));
         return;
@@ -163,7 +171,7 @@ export class LoginDoneDialog {
       opener./*OK*/postMessage({
         sentinel: 'amp',
         type: 'result',
-        result: response
+        result: response,
       }, target);
 
       this.win.setTimeout(() => {
@@ -208,9 +216,21 @@ export class LoginDoneDialog {
     }
 
     const doc = this.win.document;
-    doc.documentElement.classList.toggle('amp-postback-error', true);
+    doc.documentElement.classList.toggle('amp-error', true);
+    doc.documentElement.setAttribute('data-error', 'postback');
     doc.getElementById('closeButton').onclick = () => {
-      this.win.close();
+      try {
+        this.win.close();
+      } catch (e) {
+        // Ignore.
+      }
+      // Give a little time to actually close. If it didn't work, set the flag
+      // for closing failure.
+      this.win.setTimeout(() => {
+        if (!this.win.closed) {
+          doc.documentElement.setAttribute('data-error', 'close');
+        }
+      }, 1000);
     };
   }
 }

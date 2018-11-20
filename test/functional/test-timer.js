@@ -14,38 +14,47 @@
  * limitations under the License.
  */
 
-import {Timer} from '../../src/timer';
+import {Timer} from '../../src/service/timer-impl';
 
-describe('Timer', () => {
+describes.fakeWin('Timer', {}, env => {
 
   let sandbox;
   let windowMock;
   let timer;
 
   beforeEach(() => {
-    sandbox = sinon.sandbox.create();
+    sandbox = sinon.sandbox;
     const WindowApi = function() {};
     WindowApi.prototype.setTimeout = function(unusedCallback, unusedDelay) {};
     WindowApi.prototype.clearTimeout = function(unusedTimerId) {};
+    WindowApi.prototype.document = {};
+    WindowApi.prototype.Promise = window.Promise;
     const windowApi = new WindowApi();
     windowMock = sandbox.mock(windowApi);
+
     timer = new Timer(windowApi);
   });
 
   afterEach(() => {
-    timer = null;
     windowMock.verify();
-    windowMock = null;
     sandbox.restore();
-    sandbox = null;
   });
 
   it('delay', () => {
     const handler = () => {};
-    windowMock.expects('setTimeout').withExactArgs(handler, 111)
-        .returns(1).once();
+    windowMock.expects('setTimeout').returns(1).once();
     windowMock.expects('clearTimeout').never();
     timer.delay(handler, 111);
+  });
+
+  it('delay 0 real window', done => {
+    timer = new Timer(self);
+    timer.delay(done, 0);
+  });
+
+  it('delay 1 real window', done => {
+    timer = new Timer(self);
+    timer.delay(done, 1);
   });
 
   it('delay default', done => {
@@ -79,10 +88,10 @@ describe('Timer', () => {
     }), 111).returns(1).once();
 
     let c = 0;
-    return timer.promise(111, 'A').then(result => {
+    return timer.promise(111).then(result => {
       c++;
       expect(c).to.equal(1);
-      expect(result).to.equal('A');
+      expect(result).to.be.undefined;
     });
   });
 
@@ -99,7 +108,7 @@ describe('Timer', () => {
     }).catch(reason => {
       c++;
       expect(c).to.equal(1);
-      expect(reason).to.equal('timeout');
+      expect(reason.message).to.contain('timeout');
     });
   });
 
@@ -131,7 +140,32 @@ describe('Timer', () => {
     }).catch(reason => {
       c++;
       expect(c).to.equal(1);
-      expect(reason).to.equal('timeout');
+      expect(reason.message).to.contain('timeout');
     });
   });
+
+  it('poll - resolves only when condition is true', () => {
+    const realTimer = new Timer(env.win);
+    let predicate = false;
+    setTimeout(() => {
+      predicate = true;
+    }, 15);
+    return realTimer.poll(10, () => {
+      return predicate;
+    }).then(() => {
+      expect(predicate).to.be.true;
+    });
+  });
+
+  it('poll - clears out interval when complete', () => {
+    const realTimer = new Timer(env.win);
+    const clearIntervalStub = sandbox.stub();
+    env.win.clearInterval = clearIntervalStub;
+    return realTimer.poll(111, () => {
+      return true;
+    }).then(() => {
+      expect(clearIntervalStub).to.have.been.calledOnce;
+    });
+  });
+
 });

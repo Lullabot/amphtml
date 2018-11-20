@@ -15,7 +15,7 @@
  */
 
 import {Input} from '../../src/input';
-import * as sinon from 'sinon';
+import {installTimerService} from '../../src/service/timer-impl.js';
 
 
 describe('Input', () => {
@@ -28,7 +28,7 @@ describe('Input', () => {
   let documentApi;
 
   beforeEach(() => {
-    sandbox = sinon.sandbox.create();
+    sandbox = sinon.sandbox;
     clock = sandbox.useFakeTimers();
 
     eventListeners = {};
@@ -41,23 +41,23 @@ describe('Input', () => {
         if (eventListeners[eventType] == handler) {
           delete eventListeners[eventType];
         }
-      }
+      },
     };
 
     windowApi = {
       document: documentApi,
       navigator: {},
-      ontouchstart: ''
+      ontouchstart: '',
+      setTimeout: window.setTimeout,
+      Promise: window.Promise,
     };
+    installTimerService(windowApi);
 
     input = new Input(windowApi);
   });
 
   afterEach(() => {
-    input = null;
-    clock = null;
     sandbox.restore();
-    sandbox = null;
   });
 
   it('should initialize in touch mode', () => {
@@ -93,7 +93,7 @@ describe('Input', () => {
 
   it('should release mousemove event asap', () => {
     expect(eventListeners['mousemove']).to.not.equal(undefined);
-    eventListeners['mousemove']();
+    eventListeners['mousemove']({});
     expect(eventListeners['mousemove']).to.equal(undefined);
   });
 
@@ -105,7 +105,7 @@ describe('Input', () => {
     });
     expect(mouseDetected).to.equal(undefined);
 
-    const p = input.onMouseMove_();
+    const p = input.onMouseMove_({});
     expect(eventListeners['click']).to.not.equal(undefined);
     clock.tick(350);
 
@@ -125,7 +125,7 @@ describe('Input', () => {
     });
     expect(mouseDetected).to.equal(undefined);
 
-    const p = input.onMouseMove_();
+    const p = input.onMouseMove_({});
     eventListeners['click']();
 
     return p.then(() => {
@@ -137,6 +137,24 @@ describe('Input', () => {
     });
   });
 
+  it('should ignore mouse move if it belongs to touch', () => {
+    expect(input.isMouseDetected()).to.equal(false);
+    let mouseDetected = undefined;
+    input.onMouseDetected(detected => {
+      mouseDetected = detected;
+    });
+    expect(mouseDetected).to.equal(undefined);
+
+    const p = input.onMouseMove_(
+        {sourceCapabilities: {firesTouchEvents: true}});
+    expect(p).to.be.undefined;
+
+    expect(input.mouseConfirmAttemptCount_).to.equal(1);
+    expect(input.isMouseDetected()).to.equal(false);
+    expect(mouseDetected).to.equal(undefined);
+    expect(eventListeners['mousemove']).to.not.equal(undefined);
+  });
+
   it('should stop trying to detect mouse after few attempts', () => {
     expect(input.isMouseDetected()).to.equal(false);
     let mouseDetected = undefined;
@@ -145,7 +163,7 @@ describe('Input', () => {
     });
     expect(mouseDetected).to.equal(undefined);
 
-    const p = input.onMouseMove_();
+    const p = input.onMouseMove_({});
     input.mouseConfirmAttemptCount_ = 100;
     eventListeners['mousemove'] = undefined;
     eventListeners['click']();

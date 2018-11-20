@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-import {assertHttpsUrl} from '../../../src/url';
-
 import {Util} from './util';
+import {assertHttpsUrl} from '../../../src/url';
+import {openWindowDialog} from '../../../src/dom';
+import {tryResolve} from '../../../src/utils/promise';
+
+import {user} from '../../../src/log';
 
 // Popup options
 const POP_FOLLOW = `status=no,resizable=yes,scrollbars=yes,
@@ -32,43 +35,45 @@ export class FollowButton {
 
   /** @param {!Element} rootElement */
   constructor(rootElement) {
-    AMP.assert(rootElement.getAttribute('data-href'),
-      'The data-href attribute is required for follow buttons');
-    AMP.assert(rootElement.getAttribute('data-label'),
-      'The data-label attribute is required for follow buttons');
+    user().assert(rootElement.getAttribute('data-href'),
+        'The data-href attribute is required for follow buttons');
+    user().assert(rootElement.getAttribute('data-label'),
+        'The data-label attribute is required for follow buttons');
     this.element = rootElement;
     this.label = rootElement.getAttribute('data-label');
-    this.href = assertHttpsUrl(rootElement.getAttribute('data-href'));
+    this.href = assertHttpsUrl(rootElement.getAttribute('data-href'),
+        rootElement);
   }
 
   /**
    * Override the default href click handling to log and open popup
-   * @param {Event} event: the HTML event object
+   * @param {Event} event
    */
   handleClick(event) {
     event.preventDefault();
-    window.open(this.href, 'pin' + new Date().getTime(), POP_FOLLOW);
+    openWindowDialog(window, this.href, 'pin' + Date.now(),
+        POP_FOLLOW);
     Util.log(`&type=button_follow&href=${this.href}`);
   }
 
   /**
    * Render the follow button
-   * @returns {Element}
+   * @return {Element}
    */
   renderTemplate() {
-    const followButton = Util.make({'a': {
+    const followButton = Util.make(this.element.ownerDocument, {'a': {
       class: '-amp-pinterest-follow-button',
       href: this.href,
-      textContent: this.label
+      textContent: this.label,
     }});
-    followButton.appendChild(Util.make({'i': {}}));
+    followButton.appendChild(Util.make(this.element.ownerDocument, {'i': {}}));
     followButton.onclick = this.handleClick.bind(this);
     return followButton;
   }
 
   /**
    * Prepare the render data, create the node and add handlers
-   * @returns {!Promise}
+   * @return {!Promise}
    */
   render() {
     // Add trailing slash?
@@ -77,6 +82,6 @@ export class FollowButton {
     }
     this.href += `pins/follow/?guid=${Util.guid}`;
 
-    return Promise.resolve(this.renderTemplate());
+    return tryResolve(() => this.renderTemplate());
   }
 }

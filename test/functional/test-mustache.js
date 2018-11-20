@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-const mustache = require('../../third_party/mustache/mustache');
+import mustache from '../../third_party/mustache/mustache';
+
 
 describe('Mustache', () => {
 
@@ -22,13 +23,13 @@ describe('Mustache', () => {
 
   beforeEach(() => {
     savedSanitizer = mustache.sanitizeUnescaped;
-    mustache.setUnescapedSanitizier(function(value) {
+    mustache.setUnescapedSanitizer(function(value) {
       return value.toUpperCase();
     });
   });
 
   afterEach(() => {
-    mustache.setUnescapedSanitizier(savedSanitizer);
+    mustache.setUnescapedSanitizer(savedSanitizer);
   });
 
   it('should escape html', () => {
@@ -44,7 +45,7 @@ describe('Mustache', () => {
   it('should only expand own properties', () => {
     const parent = {value: 'bc'};
     const child = Object.create(parent);
-    const container = {parent: parent, child: child};
+    const container = {parent, child};
     expect(mustache.render('a{{value}}', parent)).to.equal('abc');
     expect(mustache.render('a{{value}}', child)).to.equal('a');
     expect(mustache.render('a{{parent.value}}', container)).to.equal('abc');
@@ -60,8 +61,8 @@ describe('Mustache', () => {
         '0': '0',
         '1': '1',
         'length': 2,
-        'x': []
-      }
+        'x': [],
+      },
     };
     expect(mustache.render(
         '{{#t}}{{x.pop}}X{{x.pop}}{{/t}}' +
